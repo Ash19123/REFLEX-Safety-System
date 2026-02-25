@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REFLEX — Authority Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#020818;--panel:rgba(0,200,255,0.04);--border:rgba(0,200,255,0.15);
+  --accent:#00c8ff;--red:#ff2d55;--green:#00ff9d;--yellow:#ffd60a;
+  --text:#b8d4f0;--dim:#3a5570;--white:#e8f4ff;
+  --gold:#f5c518;
+}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999;}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,200,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.03) 1px,transparent 1px);background-size:60px 60px;z-index:0;}
+
+/* ══════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════ */
+#login-screen{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 40%, rgba(0,50,100,0.15), var(--bg));
+}
+.login-card{
+  width:400px;padding:40px;
+  background:rgba(2,12,30,0.95);
+  border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 0 60px rgba(0,200,255,0.08);
+  display:flex;flex-direction:column;align-items:center;gap:24px;
+}
+.login-logo{font-family:'Orbitron',monospace;font-weight:900;font-size:28px;color:#fff;letter-spacing:8px;text-shadow:0 0 30px rgba(0,200,255,0.5);}
+.login-sub{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:3px;text-align:center;}
+.login-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);}
+.login-badge{
+  width:70px;height:70px;border-radius:50%;
+  border:2px solid var(--gold);
+  background:rgba(245,197,24,0.08);
+  display:flex;align-items:center;justify-content:center;font-size:32px;
+  box-shadow:0 0 30px rgba(245,197,24,0.2);
+  animation:badge-pulse 2.5s ease infinite;
+}
+@keyframes badge-pulse{0%,100%{box-shadow:0 0 30px rgba(245,197,24,0.2);}50%{box-shadow:0 0 50px rgba(245,197,24,0.4);}}
+.login-title{font-family:'Orbitron',monospace;font-size:13px;color:var(--gold);letter-spacing:3px;text-align:center;}
+.role-select{width:100%;display:flex;gap:8px;}
+.role-btn{
+  flex:1;padding:10px 8px;border-radius:8px;cursor:pointer;
+  border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--dim);
+  text-align:center;transition:all 0.2s;
+}
+.role-btn:hover{border-color:var(--accent);color:var(--accent);}
+.role-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(0,200,255,0.08);}
+.role-icon{font-size:20px;margin-bottom:4px;}
+.login-field{width:100%;display:flex;flex-direction:column;gap:6px;}
+.field-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:2px;}
+.field-input{
+  width:100%;padding:10px 14px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(0,200,255,0.15);border-radius:6px;
+  color:var(--white);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:1px;
+  outline:none;transition:border-color 0.2s;
+}
+.field-input:focus{border-color:var(--accent);}
+.field-input::placeholder{color:var(--dim);}
+.login-btn{
+  width:100%;padding:12px;border-radius:8px;
+  background:linear-gradient(135deg,rgba(0,200,255,0.15),rgba(0,68,255,0.1));
+  border:1px solid var(--accent);
+  color:var(--accent);font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:3px;
+  cursor:pointer;transition:all 0.2s;
+}
+.login-btn:hover{background:linear-gradient(135deg,rgba(0,200,255,0.25),rgba(0,68,255,0.2));box-shadow:0 0 20px rgba(0,200,255,0.2);}
+.login-error{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--red);letter-spacing:1px;display:none;text-align:center;}
+.login-error.show{display:block;}
+.demo-hint{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;text-align:center;line-height:1.8;}
+
+/* ══════════════════════════════
+   MAIN PORTAL
+══════════════════════════════ */
+#portal{display:none;flex-direction:column;min-height:100vh;position:relative;z-index:5;}
+
+/* Header */
+.portal-header{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 24px;border-bottom:1px solid var(--border);
+  background:rgba(2,8,24,0.97);backdrop-filter:blur(12px);
+}
+.ph-left{display:flex;align-items:center;gap:14px;}
+.ph-badge{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#c8860a);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.ph-name{font-family:'Orbitron',monospace;font-weight:900;font-size:16px;color:#fff;letter-spacing:4px;}
+.ph-sub{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--gold);letter-spacing:2px;}
+.ph-right{display:flex;align-items:center;gap:16px;}
+.authority-chip{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:20px;
+  border:1px solid rgba(245,197,24,0.3);background:rgba(245,197,24,0.06);
+  font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;
+}
+.auth-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.4s ease infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+.logout-btn{padding:6px 14px;border-radius:5px;border:1px solid rgba(255,45,85,0.3);color:rgba(255,45,85,0.7);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;background:transparent;transition:all 0.2s;}
+.logout-btn:hover{border-color:var(--red);color:var(--red);background:rgba(255,45,85,0.06);}
+.ph-clock{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--dim);}
+
+/* Alert banner */
+.alert-banner{
+  display:none;padding:10px 24px;
+  background:rgba(255,45,85,0.1);border-bottom:1px solid rgba(255,45,85,0.3);
+  font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--red);
+  letter-spacing:2px;align-items:center;gap:12px;
+  animation:banner-flash 0.5s ease infinite;
+}
+.alert-banner.show{display:flex;}
+@keyframes banner-flash{0%,100%{background:rgba(255,45,85,0.1);}50%{background:rgba(255,45,85,0.18);}}
+.banner-pulse{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);animation:blink 0.4s ease infinite;flex-shrink:0;}
+
+/* Portal body */
+.portal-body{padding:16px 24px;display:flex;flex-direction:column;gap:14px;flex:1;}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.stat-card{
+  padding:14px 16px;border-radius:8px;
+  background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);
+  display:flex;flex-direction:column;gap:4px;
+  transition:border-color 0.3s;
+}
+.stat-card.active-alert{border-color:rgba(255,45,85,0.4);background:rgba(255,45,85,0.04);}
+.stat-num{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--white);}
+.stat-num.red{color:var(--red);}
+.stat-num.green{color:var(--green);}
+.stat-num.yellow{color:var(--yellow);}
+.stat-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;}
+.stat-trend{font-family:'Share Tech Mono',monospace;font-size:9px;margin-top:2px;}
+
+/* Main content grid */
+.portal-grid{display:grid;grid-template-columns:1fr 380px;gap:14px;}
+
+/* Incident table */
+.portal-panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:16px;position:relative;overflow:hidden;}
+.portal-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.4;}
+.pp-title{font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:3px;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.pp-title-left{display:flex;align-items:center;gap:7px;}
+.pp-title-left::before{content:'';width:2px;height:10px;background:var(--accent);border-radius:2px;box-shadow:0 0 5px var(--accent);}
+
+/* Incidents table */
+.inc-table{width:100%;border-collapse:collapse;}
+.inc-table th{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:2px;padding:6px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.05);}
+.inc-table td{padding:10px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.inc-table tr:hover td{background:rgba(255,255,255,0.02);cursor:pointer;}
+.inc-table tr.selected-row td{background:rgba(0,200,255,0.04);border-bottom-color:rgba(0,200,255,0.1);}
+.inc-id-cell{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;}
+.status-badge{font-family:'Share Tech Mono',monospace;font-size:8px;padding:2px 7px;border-radius:3px;border:1px solid;letter-spacing:1px;white-space:nowrap;}
+.status-badge.ACTIVE{color:var(--red);border-color:var(--red);animation:blink 0.5s ease infinite;}
+.status-badge.RESPONDING{color:var(--yellow);border-color:var(--yellow);}
+.status-badge.RESOLVED{color:var(--green);border-color:var(--green);}
+.action-btn{padding:3px 10px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;cursor:pointer;border:1px solid;transition:all 0.2s;}
+.action-btn.view{border-color:rgba(0,200,255,0.3);color:var(--accent);background:transparent;}
+.action-btn.view:hover{background:rgba(0,200,255,0.1);}
+.action-btn.resolve{border-color:rgba(0,255,157,0.3);color:var(--green);background:transparent;margin-left:4px;}
+.action-btn.resolve:hover{background:rgba(0,255,157,0.08);}
+
+/* RIGHT PANEL */
+.right-panel{display:flex;flex-direction:column;gap:12px;}
+
+/* Incident detail view */
+.detail-view{display:flex;flex-direction:column;gap:10px;}
+.dv-header{display:flex;align-items:center;justify-content:space-between;}
+.dv-id{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;}
+.dv-status-badge{font-family:'Share Tech Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid;letter-spacing:1px;}
+.dv-victim{font-size:18px;font-weight:600;color:var(--white);}
+.dv-loc{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;margin-top:2px;}
+.dv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.dv-box{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:9px 11px;}
+.dv-box-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:1px;}
+.dv-box-val{font-size:14px;font-weight:600;color:var(--white);margin-top:3px;}
+.dv-box-val.red{color:var(--red);}
+.dv-box-val.yellow{color:var(--yellow);}
+.dv-box-val.green{color:var(--green);}
+
+/* Live feed */
+.live-feed-box{
+  position:relative;aspect-ratio:16/9;border-radius:8px;overflow:hidden;
+  background:#000;border:1px solid rgba(0,200,255,0.12);
+  cursor:pointer;
+}
+.live-feed-box::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px);z-index:5;pointer-events:none;}
+#feed-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+.feed-overlay-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,200,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.04) 1px,transparent 1px);background-size:20px 20px;z-index:2;}
+.feed-hud-tl{position:absolute;top:8px;left:8px;z-index:6;display:flex;align-items:center;gap:5px;}
+.feed-live-badge{background:var(--red);color:#fff;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 8px;border-radius:3px;animation:blink 0.8s ease infinite;display:none;}
+.feed-live-badge.show{display:block;}
+.feed-hud-br{position:absolute;bottom:8px;right:8px;z-index:6;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--accent);letter-spacing:1px;display:none;}
+.feed-hud-br.show{display:block;}
+.feed-det-box{position:absolute;z-index:4;top:22%;left:28%;width:38%;height:50%;border:2px solid var(--red);display:none;}
+.feed-det-box.show{display:block;animation:det-pulse 1s ease infinite;}
+@keyframes det-pulse{0%,100%{border-color:var(--red);}50%{border-color:rgba(255,45,85,0.4);}}
+.feed-det-label{position:absolute;top:-18px;left:0;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--red);background:rgba(0,0,0,0.85);padding:2px 6px;white-space:nowrap;}
+.feed-corner{position:absolute;width:14px;height:14px;z-index:4;border-color:rgba(0,200,255,0.5);border-style:solid;}
+.feed-corner.tl{top:8px;left:8px;border-width:1px 0 0 1px;}
+.feed-corner.tr{top:8px;right:8px;border-width:1px 1px 0 0;}
+.feed-corner.bl{bottom:8px;left:8px;border-width:0 0 1px 1px;}
+.feed-corner.br{bottom:8px;right:8px;border-width:0 1px 1px 0;}
+.feed-scan{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,200,255,0.5),transparent);animation:scan-sweep 3s linear infinite;z-index:3;display:none;}
+.feed-scan.show{display:block;}
+@keyframes scan-sweep{0%{top:0%;opacity:0.8;}100%{top:100%;opacity:0.1;}}
+.feed-offline-msg{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(0,0,0,0.7);}
+.feed-no-signal{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:3px;}
+.cam-btn{margin-top:6px;padding:6px 14px;border-radius:5px;border:1px solid rgba(0,200,255,0.3);color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;background:rgba(0,200,255,0.06);width:100%;transition:all 0.2s;}
+.cam-btn:hover{background:rgba(0,200,255,0.14);}
+
+/* AI bars */
+.ai-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.ai-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);width:100px;flex-shrink:0;}
+.ai-track{flex:1;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;}
+.ai-fill{height:100%;border-radius:3px;transition:width 1.5s ease;}
+.ai-fill.r{background:linear-gradient(90deg,var(--red),#ff6b6b);box-shadow:0 0 6px rgba(255,45,85,0.4);}
+.ai-fill.y{background:linear-gradient(90deg,var(--yellow),#ffaa00);}
+.ai-fill.b{background:linear-gradient(90deg,var(--accent),#0066ff);}
+.ai-pct{font-family:'Orbitron',monospace;font-size:9px;width:32px;text-align:right;}
+.ai-pct.danger{color:var(--red);}
+.ai-pct.warn{color:var(--yellow);}
+
+/* Authorities notified */
+.auth-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);margin-bottom:5px;transition:all 0.3s;}
+.auth-row.notified{border-color:rgba(0,255,157,0.2);background:rgba(0,255,157,0.03);}
+.auth-row.you{border-color:rgba(245,197,24,0.3);background:rgba(245,197,24,0.04);}
+.auth-av{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.auth-info{flex:1;}
+.auth-name{font-size:13px;font-weight:600;color:var(--white);}
+.auth-role{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:1px;margin-top:1px;}
+.auth-badge{font-family:'Share Tech Mono',monospace;font-size:8px;padding:2px 7px;border-radius:3px;border:1px solid;letter-spacing:1px;}
+.auth-badge.notified{color:var(--green);border-color:var(--green);animation:blink 1s ease infinite;}
+.auth-badge.you-badge{color:var(--gold);border-color:var(--gold);}
+.auth-badge.pending{color:var(--dim);border-color:rgba(255,255,255,0.1);}
+
+/* Resolve btn */
+.resolve-big-btn{
+  width:100%;padding:12px;border-radius:8px;
+  background:rgba(0,255,157,0.06);border:1px solid rgba(0,255,157,0.3);
+  color:var(--green);font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:3px;
+  cursor:pointer;transition:all 0.2s;
+}
+.resolve-big-btn:hover{background:rgba(0,255,157,0.12);box-shadow:0 0 15px rgba(0,255,157,0.15);}
+.resolve-big-btn:disabled{opacity:0.3;cursor:not-allowed;}
+
+/* Log */
+.log-feed{display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;}
+.log-row{display:flex;gap:7px;padding:5px 8px;border-radius:4px;background:rgba(255,255,255,0.02);font-size:11px;}
+.log-row.d{border-left:2px solid var(--red);}
+.log-row.s{border-left:2px solid var(--green);}
+.log-row.w{border-left:2px solid var(--yellow);}
+.log-row.i{border-left:2px solid var(--accent);}
+.log-t{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);white-space:nowrap;padding-top:1px;}
+
+/* No incident selected */
+.no-select{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px 20px;text-align:center;}
+.no-select-icon{font-size:36px;opacity:0.2;}
+.no-select-text{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:2px;}
+
+/* SOS Notification popup */
+.sos-notif{
+  position:fixed;top:70px;right:20px;z-index:200;
+  width:320px;padding:16px;border-radius:10px;
+  background:rgba(2,8,24,0.97);border:1px solid var(--red);
+  box-shadow:0 0 30px rgba(255,45,85,0.3);
+  display:none;animation:notif-in 0.3s ease;
+}
+.sos-notif.show{display:block;}
+@keyframes notif-in{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+.notif-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.notif-icon{font-size:24px;animation:blink 0.5s ease infinite;}
+.notif-title{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--red);}
+.notif-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(255,45,85,0.7);letter-spacing:1px;}
+.notif-body{font-size:12px;color:var(--text);line-height:1.6;margin-bottom:12px;}
+.notif-actions{display:flex;gap:8px;}
+.notif-btn{flex:1;padding:7px;border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border:1px solid;transition:all 0.2s;text-align:center;}
+.notif-btn.accept{border-color:var(--red);color:var(--red);background:rgba(255,45,85,0.08);}
+.notif-btn.accept:hover{background:rgba(255,45,85,0.18);}
+.notif-btn.dismiss{border-color:var(--dim);color:var(--dim);background:transparent;}
+.notif-btn.dismiss:hover{border-color:var(--accent);color:var(--accent);}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:rgba(0,200,255,0.2);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- SOS NOTIFICATION -->
+<div class="sos-notif" id="sos-notif">
+  <div class="notif-header">
+    <div class="notif-icon">🚨</div>
+    <div><div class="notif-title">NEW SOS ALERT</div><div class="notif-sub">INCIDENT REQUIRES ATTENTION</div></div>
+  </div>
+  <div class="notif-body" id="notif-body">Loading...</div>
+  <div class="notif-actions">
+    <div class="notif-btn accept" onclick="acceptAlert()">✓ VIEW INCIDENT</div>
+    <div class="notif-btn dismiss" onclick="dismissNotif()">✕ DISMISS</div>
+  </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">REFLEX</div>
+    <div class="login-sub">AUTHORITY ACCESS PORTAL</div>
+    <div class="login-divider"></div>
+    <div class="login-badge">🏛</div>
+    <div class="login-title">AUTHORIZED PERSONNEL ONLY</div>
+
+    <div class="role-select">
+      <div class="role-btn selected" onclick="selectRole(this,'police')" data-role="police">
+        <div class="role-icon">🚔</div>
+        <div>POLICE</div>
+      </div>
+      <div class="role-btn" onclick="selectRole(this,'warden')" data-role="warden">
+        <div class="role-icon">🏫</div>
+        <div>WARDEN</div>
+      </div>
+      <div class="role-btn" onclick="selectRole(this,'admin')" data-role="admin">
+        <div class="role-icon">🛡</div>
+        <div>ADMIN</div>
+      </div>
+    </div>
+
+    <div class="login-field">
+      <div class="field-label">OFFICER ID / BADGE NUMBER</div>
+      <input class="field-input" id="login-id" placeholder="e.g. AP-CID-2024-081" />
+    </div>
+    <div class="login-field">
+      <div class="field-label">ACCESS CODE</div>
+      <input class="field-input" type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+
+    <div class="login-error" id="login-error">⚠ INVALID CREDENTIALS — TRY AGAIN</div>
+    <button class="login-btn" onclick="doLogin()">AUTHENTICATE →</button>
+    <div class="login-divider"></div>
+    <div class="demo-hint">DEMO CREDENTIALS<br>ID: DEMO001 · PASS: reflex2024<br><br>Any role works for demo</div>
+  </div>
+</div>
+
+<!-- MAIN PORTAL -->
+<div id="portal">
+
+  <!-- Header -->
+  <div class="portal-header">
+    <div class="ph-left">
+      <div class="ph-badge">🏛</div>
+      <div>
+        <div class="ph-name">REFLEX</div>
+        <div class="ph-sub" id="ph-sub">AUTHORITY SURVEILLANCE PORTAL</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <div class="authority-chip"><div class="auth-dot"></div><span id="auth-label">OFFICER · LOGGED IN</span></div>
+      <div class="ph-clock" id="ph-clock">00:00:00</div>
+      <button class="logout-btn" onclick="doLogout()">LOGOUT</button>
+    </div>
+  </div>
+
+  <!-- Alert banner -->
+  <div class="alert-banner" id="alert-banner">
+    <div class="banner-pulse"></div>
+    <span id="banner-text">⚠ ACTIVE EMERGENCY — IMMEDIATE RESPONSE REQUIRED</span>
+  </div>
+
+  <div class="portal-body">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card" id="sc-sos">
+        <div class="stat-num red" id="sc-sos-num">0</div>
+        <div class="stat-lbl">ACTIVE SOS</div>
+        <div class="stat-trend" style="color:var(--red)" id="sc-sos-trend">↑ MONITORING</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num yellow" id="sc-drones-num">0</div>
+        <div class="stat-lbl">DRONES DEPLOYED</div>
+        <div class="stat-trend" style="color:var(--yellow)">REAL-TIME</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num green" id="sc-resolved-num">0</div>
+        <div class="stat-lbl">RESOLVED TODAY</div>
+        <div class="stat-trend" style="color:var(--green)">↑ GOOD</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="sc-resp-num">--</div>
+        <div class="stat-lbl">AVG RESPONSE</div>
+        <div class="stat-trend" style="color:var(--accent)">SECONDS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="font-size:20px;padding-top:4px" id="sc-area-num">AMARAVATI</div>
+        <div class="stat-lbl">JURISDICTION</div>
+        <div class="stat-trend" style="color:var(--dim)">AP, INDIA</div>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="portal-grid">
+
+      <!-- Left: incident table + log -->
+      <div style="display:flex;flex-direction:column;gap:12px;">
+
+        <div class="portal-panel">
+          <div class="pp-title">
+            <div class="pp-title-left">Active Incidents</div>
+            <div style="display:flex;gap:8px;">
+              <button class="action-btn view" onclick="simNewSOS()">＋ SIMULATE SOS</button>
+              <button class="action-btn view" onclick="simMassSOS()">⚡ MASS INCIDENT</button>
+              <button class="action-btn resolve" onclick="simReset()">↺ RESET</button>
+            </div>
+          </div>
+          <table class="inc-table" id="inc-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>VICTIM</th><th>LOCATION</th><th>THREAT</th><th>ELAPSED</th><th>DRONE</th><th>STATUS</th><th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="inc-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:30px;font-family:Share Tech Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;">NO ACTIVE INCIDENTS — PRESS "SIMULATE SOS" OR TRIGGER FROM PHONE</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="portal-panel">
+          <div class="pp-title"><div class="pp-title-left">System Activity Log</div></div>
+          <div class="log-feed" id="portal-log">
+            <div class="log-row i"><div class="log-t">--:--:--</div><div>Authority portal initialized. Monitoring Amrita Amaravati campus zone.</div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right: incident detail + live feed -->
+      <div class="right-panel">
+
+        <div class="portal-panel" id="right-detail">
+          <div class="pp-title"><div class="pp-title-left" id="right-title">Incident Monitor</div></div>
+          <div class="no-select" id="no-select">
+            <div class="no-select-icon">🛡</div>
+            <div class="no-select-text">SELECT AN INCIDENT FROM THE TABLE<br>TO VIEW LIVE SURVEILLANCE FEED</div>
+          </div>
+          <div id="incident-detail" style="display:none;">
+            <div class="detail-view">
+              <div class="dv-header">
+                <div class="dv-id" id="dv-id">--</div>
+                <div class="dv-status-badge" id="dv-status">--</div>
+              </div>
+              <div>
+                <div class="dv-victim" id="dv-victim">--</div>
+                <div class="dv-loc" id="dv-loc">--</div>
+              </div>
+              <div class="dv-grid">
+                <div class="dv-box"><div class="dv-box-label">THREAT</div><div class="dv-box-val red" id="dv-threat" style="font-size:11px">--</div></div>
+                <div class="dv-box"><div class="dv-box-label">ELAPSED</div><div class="dv-box-val" id="dv-elapsed">--</div></div>
+                <div class="dv-box"><div class="dv-box-label">DRONE</div><div class="dv-box-val yellow" id="dv-drone">--</div></div>
+                <div class="dv-box"><div class="dv-box-label">GPS</div><div class="dv-box-val" id="dv-gps" style="font-size:11px">--</div></div>
+              </div>
+            </div>
+
+            <!-- LIVE FEED -->
+            <div style="margin-top:10px;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:2px;margin-bottom:6px;">DRONE LIVE SURVEILLANCE FEED</div>
+              <div class="live-feed-box" id="live-feed-box">
+                <canvas id="feed-canvas"></canvas>
+                <div class="feed-overlay-grid"></div>
+                <div class="feed-corner tl"></div><div class="feed-corner tr"></div>
+                <div class="feed-corner bl"></div><div class="feed-corner br"></div>
+                <div class="feed-scan" id="feed-scan"></div>
+                <div class="feed-det-box" id="feed-det-box"><div class="feed-det-label">⚠ THREAT DETECTED — AI CONFIRMED</div></div>
+                <div class="feed-hud-tl">
+                  <div class="feed-live-badge" id="feed-live-badge">● LIVE</div>
+                </div>
+                <div class="feed-hud-br" id="feed-hud-br">DRONE-01 · STREAMING</div>
+                <div class="feed-offline-msg" id="feed-offline">
+                  <div style="font-size:28px;opacity:0.15">📡</div>
+                  <div class="feed-no-signal">AWAITING DRONE ARRIVAL</div>
+                  <div style="font-family:Share Tech Mono,monospace;font-size:8px;color:var(--dim);letter-spacing:1px;margin-top:4px;">FEED ACTIVATES AFTER DISPATCH</div>
+                </div>
+              </div>
+              <button class="cam-btn" onclick="enableLiveCamera()">📷 ENABLE LIVE WEBCAM (SIMULATES DRONE)</button>
+            </div>
+
+            <!-- AI Detection -->
+            <div style="margin-top:10px;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">AI THREAT ANALYSIS</div>
+              <div id="ai-bars-container">
+                <div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:1px;">AWAITING DRONE FEED...</div>
+              </div>
+            </div>
+
+            <!-- Authorities notified -->
+            <div style="margin-top:10px;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">AUTHORITIES NOTIFIED</div>
+              <div id="auth-notified"></div>
+            </div>
+
+            <button class="resolve-big-btn" id="resolve-btn" onclick="resolveSelected()">✓ MARK AS RESOLVED</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── AUDIO ──
+let actx;
+function ga(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();return actx;}
+function beep(f,d,t,v){try{const c=ga();const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.type=t||'square';o.frequency.value=f||880;g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(v||0.1,c.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+(d||0.12));o.start();o.stop(c.currentTime+(d||0.12)+0.05);}catch(e){}}
+function sosAlarm(){beep(440,0.12,'sawtooth',0.15);setTimeout(()=>beep(660,0.12,'sawtooth',0.15),180);setTimeout(()=>beep(880,0.25,'sawtooth',0.2),360);}
+function successBeep(){beep(760,0.09,'sine',0.09);setTimeout(()=>beep(960,0.13,'sine',0.1),140);}
+
+// ── CLOCK ──
+function tick(){const t=new Date().toTimeString().split(' ')[0];document.getElementById('ph-clock').textContent=t;}
+setInterval(tick,1000);tick();
+function ts(){return new Date().toTimeString().split(' ')[0];}
+
+// ── DATA ──
+const LOCS=[
+  {name:"Amrita Main Gate",         area:"MAIN GATE",           lat:16.5130,lng:80.5160},
+  {name:"Girls Hostel Block A",     area:"GIRLS HOSTEL-A",      lat:16.5118,lng:80.5148},
+  {name:"Girls Hostel Block B",     area:"GIRLS HOSTEL-B",      lat:16.5122,lng:80.5155},
+  {name:"Amrita Library Road",      area:"LIBRARY ROAD",        lat:16.5135,lng:80.5172},
+  {name:"Namburu Village Junction", area:"NAMBURU JUNCTION",    lat:16.5155,lng:80.5120},
+  {name:"Campus Canteen Area",      area:"CANTEEN ZONE",        lat:16.5125,lng:80.5165},
+  {name:"Amaravati Capital Road",   area:"CAPITAL ROAD",        lat:16.5090,lng:80.5200},
+  {name:"Mangalagiri NH-16",        area:"NH-16 MANGALAGIRI",   lat:16.5060,lng:80.5100},
+  {name:"Undavalli Riverside",      area:"UNDAVALLI RIVERSIDE", lat:16.5020,lng:80.5250},
+  {name:"Tadepalle Bus Stop",       area:"TADEPALLE BUS STOP",  lat:16.4980,lng:80.5180},
+];
+const NAMES=['Priya Sharma','Kavya Reddy','Ananya Singh','Meera Iyer','Divya Nair','Sneha Patel','Riya Desai','Pooja Rao','Aisha Khan','Lakshmi V'];
+const THREATS=['Stalker following student on campus road','Suspicious individual near hostel block','Unsafe situation at campus exit','Distress call from library area','Assault attempt near highway','Unsafe transport auto refusing to stop'];
+const DRONE_IDS=['D1','D2','D3','D4','D5'];
+
+let incidents=[],selectedId=null,iCount=0,resolvedCount=0,camStream=null,camActive=false,canvasAF=null;
+let currentRole='police',currentUser='DEMO001';
+
+// ── LOGIN ──
+let selectedRoleEl=null;
+function selectRole(el,role){
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');currentRole=role;
+}
+
+function doLogin(){
+  ga();
+  const id=document.getElementById('login-id').value.trim();
+  const pass=document.getElementById('login-pass').value.trim();
+  if(!id||!pass){showErr();return;}
+  if(id.toUpperCase()==='DEMO001'&&pass==='reflex2024'||id.length>=3&&pass.length>=4){
+    currentUser=id.toUpperCase();
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('portal').style.display='flex';
+    const roleLabels={police:'🚔 POLICE OFFICER',warden:'🏫 HOSTEL WARDEN',admin:'🛡 SECURITY ADMIN'};
+    document.getElementById('auth-label').textContent=currentUser+' · '+roleLabels[currentRole];
+    document.getElementById('ph-sub').textContent='AUTHORITY PORTAL · '+currentRole.toUpperCase()+' ACCESS';
+    plog('🔐 Officer '+currentUser+' authenticated. Monitoring active.','s');
+  } else {
+    showErr();
+  }
+}
+
+function showErr(){const e=document.getElementById('login-error');e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2500);beep(200,0.3,'sawtooth',0.1);}
+function doLogout(){document.getElementById('portal').style.display='none';document.getElementById('login-screen').style.display='flex';}
+
+// ── LOG ──
+function plog(msg,cls){
+  const el=document.getElementById('portal-log');
+  const d=document.createElement('div');d.className='log-row '+(cls||'i');
+  d.innerHTML='<div class="log-t">'+ts()+'</div><div>'+msg+'</div>';
+  el.insertBefore(d,el.firstChild);
+}
+
+// ── SIMULATE SOS ──
+function simNewSOS(li){
+  ga();sosAlarm();
+  const locIdx=li!=null?li:Math.floor(Math.random()*LOCS.length);
+  const loc=LOCS[locIdx];
+  const id='INC-'+String(++iCount).padStart(3,'0');
+  const victim=NAMES[Math.floor(Math.random()*NAMES.length)];
+  const threat=THREATS[Math.floor(Math.random()*THREATS.length)];
+  const droneId=DRONE_IDS[Math.floor(Math.random()*DRONE_IDS.length)];
+  const inc={id,victim,threat,loc,droneId,status:'ACTIVE',startTime:Date.now(),ai:{s:0,a:0,v:0,c:0},feedActive:false,detActive:false,resolved:false,authNotified:false};
+  incidents.push(inc);
+  plog('🚨 SOS #'+id+' — '+victim+' @ '+loc.area,'d');
+
+  // Show notification popup
+  showNotif(inc);
+
+  // Auto update banner
+  updateBanner();
+  renderTable();
+  updateStats();
+
+  // Run auto-sequence
+  autoSeq(inc);
+}
+
+function autoSeq(inc){
+  const id=inc.id;
+  setTimeout(()=>{plog('📱 Contacts alerted for '+id,'s');},1500);
+  setTimeout(()=>{plog('🚁 Drone '+inc.droneId+' dispatched → '+inc.loc.area,'w');updateStats();renderTable();},3000);
+  setTimeout(()=>{
+    inc.feedActive=true;
+    plog('📹 '+inc.droneId+' on site — live feed active ('+id+')','s');
+    if(selectedId===id){activateLiveFeed(inc);renderAIBars(inc);}
+    updateStats();
+  },11000);
+  setTimeout(()=>{
+    inc.ai.s=Math.floor(Math.random()*15+80);inc.ai.a=Math.floor(Math.random()*12+82);
+    inc.ai.v=Math.floor(Math.random()*20+70);inc.ai.c=Math.floor(Math.random()*10+88);
+    inc.detActive=true;
+    plog('🚨 THREAT CONFIRMED '+inc.ai.c+'% confidence ('+id+')','d');
+    sosAlarm();
+    inc.authNotified=true;
+    if(selectedId===id){renderAIBars(inc);renderAuthNotified(inc);showDetectionBox();}
+    updateBanner();renderTable();
+  },15000);
+}
+
+function simMassSOS(){
+  ga();
+  const used=incidents.map(i=>LOCS.indexOf(i.loc));
+  let added=0;
+  for(let i=0;i<LOCS.length&&added<3;i++){
+    if(!used.includes(i)){setTimeout(()=>simNewSOS(i),added*800);added++;}
+  }
+}
+
+function simReset(){
+  incidents=[];selectedId=null;iCount=0;resolvedCount=0;
+  stopCanvas();hideLiveFeed();
+  renderTable();updateStats();updateBanner();
+  document.getElementById('no-select').style.display='flex';
+  document.getElementById('incident-detail').style.display='none';
+  plog('↺ System reset. All units standby.','i');
+}
+
+// ── NOTIFICATION ──
+let notifIncId=null;
+function showNotif(inc){
+  notifIncId=inc.id;
+  document.getElementById('notif-body').innerHTML='<strong style="color:var(--white)">'+inc.victim+'</strong> triggered SOS at <strong style="color:var(--red)">'+inc.loc.name+'</strong><br><br>Threat: '+inc.threat+'<br>Drone '+inc.droneId+' dispatched. Live feed available.';
+  document.getElementById('sos-notif').classList.add('show');
+  setTimeout(()=>dismissNotif(),8000);
+}
+function acceptAlert(){dismissNotif();if(notifIncId){const inc=incidents.find(i=>i.id===notifIncId);if(inc)selectIncident(inc.id);}}
+function dismissNotif(){document.getElementById('sos-notif').classList.remove('show');}
+
+// ── SELECT INCIDENT ──
+function selectIncident(id){
+  selectedId=id;
+  const inc=incidents.find(i=>i.id===id);if(!inc)return;
+  document.getElementById('no-select').style.display='none';
+  document.getElementById('incident-detail').style.display='block';
+  document.getElementById('right-title').textContent=id+' — LIVE MONITOR';
+  renderDetail(inc);
+  renderAIBars(inc);
+  renderAuthNotified(inc);
+  renderTable();
+  if(inc.feedActive)activateLiveFeed(inc);
+  else hideLiveFeed();
+  if(inc.detActive)showDetectionBox();
+  else hideDetectionBox();
+}
+
+// ── TABLE ──
+function renderTable(){
+  const tbody=document.getElementById('inc-tbody');
+  if(!incidents.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;font-family:Share Tech Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;">NO ACTIVE INCIDENTS</td></tr>';return;}
+  const alive=incidents.filter(i=>!i.resolved);
+  if(!alive.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;font-family:Share Tech Mono,monospace;font-size:10px;color:var(--green);letter-spacing:1px;">✓ ALL INCIDENTS RESOLVED</td></tr>';return;}
+  tbody.innerHTML=alive.map(inc=>{
+    const e=Math.floor((Date.now()-inc.startTime)/1000);
+    const mm=String(Math.floor(e/60)).padStart(2,'0'),ss=String(e%60).padStart(2,'0');
+    const sel=selectedId===inc.id;
+    return '<tr class="'+(sel?'selected-row':'')+'" onclick="selectIncident(\''+inc.id+'\')">'
+      +'<td><div class="inc-id-cell" style="color:var(--red)">'+inc.id+'</div></td>'
+      +'<td><div style="font-weight:600;color:var(--white)">'+inc.victim+'</div></td>'
+      +'<td><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim)">'+inc.loc.area+'</div></td>'
+      +'<td><div style="font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+inc.threat+'</div></td>'
+      +'<td><div style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--yellow)">'+mm+':'+ss+'</div></td>'
+      +'<td><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:'+(inc.feedActive?'var(--green)':'var(--dim)')+'">'+inc.droneId+(inc.feedActive?' ●':' ○')+'</div></td>'
+      +'<td><div class="status-badge '+inc.status+'">'+inc.status+'</div></td>'
+      +'<td><button class="action-btn view" onclick="event.stopPropagation();selectIncident(\''+inc.id+'\')">VIEW</button>'
+      +'<button class="action-btn resolve" onclick="event.stopPropagation();resolveInc(\''+inc.id+'\')">RESOLVE</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ── DETAIL ──
+function renderDetail(inc){
+  const e=Math.floor((Date.now()-inc.startTime)/1000);
+  const mm=String(Math.floor(e/60)).padStart(2,'0'),ss=String(e%60).padStart(2,'0');
+  document.getElementById('dv-id').textContent=inc.id;document.getElementById('dv-id').style.color=inc.status==='ACTIVE'?'var(--red)':'var(--yellow)';
+  const sb=document.getElementById('dv-status');sb.textContent=inc.status;sb.style.color=inc.status==='ACTIVE'?'var(--red)':'var(--yellow)';sb.style.borderColor=inc.status==='ACTIVE'?'var(--red)':'var(--yellow)';
+  document.getElementById('dv-victim').textContent='👤 '+inc.victim;
+  document.getElementById('dv-loc').textContent='📍 '+inc.loc.name+', Amaravati';
+  document.getElementById('dv-threat').textContent=inc.threat;
+  document.getElementById('dv-elapsed').textContent=mm+':'+ss;
+  document.getElementById('dv-drone').textContent=inc.droneId+(inc.feedActive?' (LIVE)':' (EN ROUTE)');
+  document.getElementById('dv-gps').textContent=inc.loc.lat.toFixed(4)+'°N '+inc.loc.lng.toFixed(4)+'°E';
+}
+
+function renderAIBars(inc){
+  if(!inc.feedActive){document.getElementById('ai-bars-container').innerHTML='<div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:1px;">AWAITING DRONE ARRIVAL...</div>';return;}
+  function bar(lbl,val,cls){const pc=val>=80?'danger':val>=50?'warn':'';return '<div class="ai-bar-row"><div class="ai-lbl">'+lbl+'</div><div class="ai-track"><div class="ai-fill '+cls+'" style="width:'+val+'%"></div></div><div class="ai-pct '+pc+'">'+val+'%</div></div>';}
+  document.getElementById('ai-bars-container').innerHTML=bar('SCREAM DETECT',inc.ai.s,'r')+bar('DISTRESS AUDIO',inc.ai.a,'y')+bar('VISUAL THREAT',inc.ai.v,'b')+bar('AI CONFIDENCE',inc.ai.c,'r');
+}
+
+function renderAuthNotified(inc){
+  const roleMap={police:'🚔 Police Officers',warden:'🏫 Hostel Wardens',admin:'🛡 Security Admin'};
+  const html=[
+    '<div class="auth-row you"><div class="auth-av" style="background:linear-gradient(135deg,#5c4a00,var(--gold))">'+currentUser.charAt(0)+'</div><div class="auth-info"><div class="auth-name">'+currentUser+'</div><div class="auth-role">'+roleMap[currentRole]+'</div></div><div class="auth-badge you-badge">YOU — VIEWING</div></div>',
+    '<div class="auth-row '+(inc.authNotified?'notified':'')+'"><div class="auth-av" style="background:linear-gradient(135deg,#5c1a00,#ff6b00)">P</div><div class="auth-info"><div class="auth-name">Cyberabad Control Room</div><div class="auth-role">POLICE DISPATCH</div></div><div class="auth-badge '+(inc.authNotified?'notified':'pending')+'">'+(inc.authNotified?'NOTIFIED':'PENDING')+'</div></div>',
+    '<div class="auth-row '+(inc.authNotified?'notified':'')+'"><div class="auth-av" style="background:linear-gradient(135deg,#1a4a5c,var(--accent))">W</div><div class="auth-info"><div class="auth-name">Campus Warden</div><div class="auth-role">AMRITA SECURITY</div></div><div class="auth-badge '+(inc.authNotified?'notified':'pending')+'">'+(inc.authNotified?'NOTIFIED':'PENDING')+'</div></div>',
+  ].join('');
+  document.getElementById('auth-notified').innerHTML=html;
+}
+
+// ── LIVE FEED ──
+function activateLiveFeed(inc){
+  document.getElementById('feed-offline').style.display='none';
+  document.getElementById('feed-live-badge').classList.add('show');
+  document.getElementById('feed-hud-br').classList.add('show');
+  document.getElementById('feed-hud-br').textContent=inc.droneId+' · LIVE STREAMING';
+  document.getElementById('feed-scan').classList.add('show');
+  startFeedCanvas(true);
+  if(inc.detActive)showDetectionBox();
+}
+function hideLiveFeed(){
+  document.getElementById('feed-offline').style.display='flex';
+  document.getElementById('feed-live-badge').classList.remove('show');
+  document.getElementById('feed-scan').classList.remove('show');
+  stopCanvas();startFeedCanvas(false);
+}
+function showDetectionBox(){document.getElementById('feed-det-box').classList.add('show');}
+function hideDetectionBox(){document.getElementById('feed-det-box').classList.remove('show');}
+
+function startFeedCanvas(active){
+  stopCanvas();
+  const cv=document.getElementById('feed-canvas');
+  const box=document.getElementById('live-feed-box');
+  cv.width=box.offsetWidth||400;cv.height=box.offsetHeight||225;
+  const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;
+  function draw(){
+    if(camActive)return;
+    if(active){
+      ctx.fillStyle='rgba(2,12,26,0.88)';ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='rgba(0,200,255,0.05)';ctx.lineWidth=0.5;
+      for(let x=0;x<W;x+=18){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let y=0;y<H;y+=18){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+      const img=ctx.createImageData(W,H);
+      for(let i=0;i<img.data.length;i+=4){const v=Math.random()>0.97?Math.random()*60:0;img.data[i]=v;img.data[i+1]=v+Math.random()*25;img.data[i+2]=v+Math.random()*50;img.data[i+3]=v>0?220:0;}
+      ctx.putImageData(img,0,0);
+    } else {
+      const img=ctx.createImageData(W,H);
+      for(let i=0;i<img.data.length;i+=4){const v=Math.random()*12;img.data[i]=v;img.data[i+1]=v;img.data[i+2]=v;img.data[i+3]=160;}
+      ctx.putImageData(img,0,0);
+    }
+    canvasAF=requestAnimationFrame(draw);
+  }
+  draw();
+}
+function stopCanvas(){if(canvasAF)cancelAnimationFrame(canvasAF);canvasAF=null;}
+
+async function enableLiveCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    camStream=stream;camActive=true;stopCanvas();
+    const vid=document.createElement('video');vid.srcObject=stream;vid.autoplay=true;vid.playsInline=true;vid.muted=true;
+    vid.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;border-radius:0;';
+    const box=document.getElementById('live-feed-box');
+    box.appendChild(vid);
+    document.getElementById('feed-offline').style.display='none';
+    document.getElementById('feed-live-badge').classList.add('show');
+    document.getElementById('feed-scan').classList.add('show');
+    plog('📷 Live webcam connected — simulating drone feed','s');
+    successBeep();
+  } catch(e){plog('📷 Camera denied — using simulated feed','w');}
+}
+
+// ── RESOLVE ──
+function resolveSelected(){if(selectedId)resolveInc(selectedId);}
+function resolveInc(id){
+  const inc=incidents.find(i=>i.id===id);if(!inc||inc.resolved)return;
+  inc.resolved=true;inc.status='RESOLVED';resolvedCount++;
+  plog('✓ Incident '+id+' marked RESOLVED by '+currentUser,'s');
+  successBeep();
+  renderTable();updateStats();updateBanner();
+  if(selectedId===id){renderDetail(inc);hideLiveFeed();}
+}
+
+// ── STATS & BANNER ──
+function updateStats(){
+  const active=incidents.filter(i=>!i.resolved).length;
+  const drones=incidents.filter(i=>!i.resolved&&i.feedActive).length;
+  const times=incidents.filter(i=>i.resolved).map(i=>Math.floor((Date.now()-i.startTime)/1000));
+  const avg=times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length)+'s':'--';
+  document.getElementById('sc-sos-num').textContent=active;
+  document.getElementById('sc-drones-num').textContent=drones;
+  document.getElementById('sc-resolved-num').textContent=resolvedCount;
+  document.getElementById('sc-resp-num').textContent=avg;
+  const card=document.getElementById('sc-sos');
+  if(active>0)card.classList.add('active-alert');else card.classList.remove('active-alert');
+}
+function updateBanner(){
+  const active=incidents.filter(i=>!i.resolved);
+  const banner=document.getElementById('alert-banner');
+  if(active.length>0){
+    banner.classList.add('show');
+    document.getElementById('banner-text').textContent='⚠ '+active.length+' ACTIVE EMERGENCY — IMMEDIATE RESPONSE REQUIRED — '+active.map(i=>i.id).join(' · ');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+// ── REFRESH TIMER ──
+setInterval(()=>{
+  if(selectedId){const inc=incidents.find(i=>i.id===selectedId);if(inc)renderDetail(inc);}
+  renderTable();
+},1000);
+
+// ── KEYBOARD ──
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('portal').style.display==='none')return;
+  if(e.code==='Space'){e.preventDefault();simNewSOS();}
+  if(e.code==='KeyM'){e.preventDefault();simMassSOS();}
+  if(e.code==='KeyR'){e.preventDefault();simReset();}
+});
+</script>
+</body>
+</html>

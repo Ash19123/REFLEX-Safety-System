@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REFLEX — Multi-Incident Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#020818;--panel:rgba(0,200,255,0.04);--border:rgba(0,200,255,0.15);--accent:#00c8ff;--red:#ff2d55;--green:#00ff9d;--yellow:#ffd60a;--text:#b8d4f0;--dim:#3a5570;--white:#e8f4ff;}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;height:100vh;overflow:hidden;position:relative;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999;}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,200,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.03) 1px,transparent 1px);background-size:60px 60px;z-index:0;}
+header{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-bottom:1px solid var(--border);background:rgba(2,8,24,0.97);}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#0044ff);display:flex;align-items:center;justify-content:center;font-size:16px;}
+.logo-name{font-family:'Orbitron',monospace;font-weight:900;font-size:18px;color:#fff;letter-spacing:5px;}
+.logo-sub{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--accent);letter-spacing:2px;}
+.header-right{display:flex;align-items:center;gap:16px;}
+.stat-pill{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:20px;border:1px solid;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;}
+.stat-pill.green{border-color:rgba(0,255,157,0.3);color:var(--green);background:rgba(0,255,157,0.05);}
+.stat-pill.red{border-color:rgba(255,45,85,0.4);color:var(--red);background:rgba(255,45,85,0.05);}
+.stat-pill.yellow{border-color:rgba(255,214,10,0.3);color:var(--yellow);background:rgba(255,214,10,0.05);}
+.dot{width:6px;height:6px;border-radius:50%;animation:blink 1s ease infinite;flex-shrink:0;}
+.dot.g{background:var(--green);box-shadow:0 0 6px var(--green);}
+.dot.r{background:var(--red);box-shadow:0 0 6px var(--red);animation-duration:0.4s;}
+.dot.y{background:var(--yellow);box-shadow:0 0 6px var(--yellow);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+.clock{font-family:'Share Tech Mono',monospace;font-size:16px;color:var(--dim);}
+.ctrl-bar{display:flex;gap:8px;}
+.hbtn{padding:5px 14px;border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all 0.2s;border:1px solid;}
+.hbtn.red{border-color:rgba(255,45,85,0.4);color:var(--red);background:rgba(255,45,85,0.08);}
+.hbtn.red:hover{background:rgba(255,45,85,0.2);}
+.hbtn.blue{border-color:rgba(0,200,255,0.3);color:var(--accent);background:rgba(0,200,255,0.06);}
+.hbtn.blue:hover{background:rgba(0,200,255,0.15);}
+.hbtn.dim{border-color:var(--dim);color:var(--dim);}
+.hbtn.dim:hover{border-color:var(--accent);color:var(--accent);}
+.workspace{position:relative;z-index:5;display:grid;grid-template-columns:1fr 340px;gap:10px;padding:10px 14px;height:calc(100vh - 52px);}
+.map-section{display:flex;flex-direction:column;gap:8px;}
+.map-container{flex:1;position:relative;background:linear-gradient(135deg,#020c1f,#030f25);border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+.map-container::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(0,200,255,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.06) 1px,transparent 1px);background-size:50px 50px;z-index:1;pointer-events:none;}
+.road{position:absolute;background:rgba(255,255,255,0.07);}
+.road.h{height:2px;width:100%;}
+.road.v{width:2px;height:100%;}
+.road.mh{height:3px;width:100%;background:rgba(255,255,255,0.12);}
+.road.mv{width:3px;height:100%;background:rgba(255,255,255,0.12);}
+.mlabel{position:absolute;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,200,255,0.38);letter-spacing:1px;z-index:2;pointer-events:none;}
+.campus-marker{position:absolute;transform:translate(-50%,-50%);z-index:8;cursor:default;}
+.campus-box{width:22px;height:22px;border-radius:4px;background:rgba(0,200,255,0.12);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 0 20px rgba(0,200,255,0.5);animation:campus-glow 2s ease infinite;}
+@keyframes campus-glow{0%,100%{box-shadow:0 0 20px rgba(0,200,255,0.4);}50%{box-shadow:0 0 40px rgba(0,200,255,0.8);}}
+.campus-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--accent);background:rgba(0,0,0,0.85);padding:2px 6px;border-radius:3px;border:1px solid rgba(0,200,255,0.35);letter-spacing:1px;}
+.inc-marker{position:absolute;transform:translate(-50%,-50%);z-index:10;display:none;cursor:pointer;}
+.inc-marker.show{display:block;}
+.inc-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;z-index:3;}
+.inc-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px solid currentColor;animation:inc-expand 2s ease-out infinite;z-index:2;}
+.inc-ring:nth-child(3){animation-delay:0.4s;}
+.inc-ring:nth-child(4){animation-delay:0.8s;}
+@keyframes inc-expand{0%{width:14px;height:14px;opacity:0.9;}100%{width:100px;height:100px;opacity:0;}}
+.inc-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;background:rgba(0,0,0,0.85);padding:2px 7px;border-radius:3px;z-index:4;border:1px solid currentColor;}
+.inc-id{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-family:'Orbitron',monospace;font-size:8px;font-weight:700;color:#fff;white-space:nowrap;background:rgba(0,0,0,0.75);padding:1px 5px;border-radius:2px;}
+.drone-dot{position:absolute;font-size:18px;z-index:8;filter:drop-shadow(0 0 6px var(--accent));transition:top 4s cubic-bezier(0.4,0,0.2,1),left 4s cubic-bezier(0.4,0,0.2,1);display:none;}
+.drone-dot.show{display:block;}
+.ps{position:absolute;z-index:5;}
+.ps-dot{width:8px;height:8px;border-radius:50%;background:var(--yellow);box-shadow:0 0 8px var(--yellow);}
+.ps-dot.alert{animation:ps-alert 0.5s ease infinite;}
+@keyframes ps-alert{0%,100%{box-shadow:0 0 8px var(--yellow);}50%{box-shadow:0 0 20px var(--yellow),0 0 35px rgba(255,214,10,0.4);}}
+.ps-name{font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,214,10,0.7);white-space:nowrap;margin-top:2px;}
+.route-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;}
+.map-hud{position:absolute;bottom:10px;left:12px;z-index:9;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,200,255,0.4);letter-spacing:1px;}
+.map-legend{position:absolute;top:10px;right:10px;z-index:9;display:flex;flex-direction:column;gap:5px;background:rgba(2,8,24,0.88);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:1px;}
+.legend-dot{width:8px;height:8px;border-radius:50%;}
+.inc-strip{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;}
+.inc-chip{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;transition:all 0.2s;}
+.inc-chip:hover{border-color:rgba(255,255,255,0.2);}
+.inc-chip.active-chip{background:rgba(255,255,255,0.04);}
+.chip-cid{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;}
+.sidebar{display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;overflow:hidden;flex-shrink:0;}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5;}
+.ptitle{font-family:'Orbitron',monospace;font-size:8px;font-weight:700;letter-spacing:3px;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.ptitle::before{content:'';width:2px;height:9px;background:var(--accent);border-radius:2px;box-shadow:0 0 5px var(--accent);}
+.detail-card{display:flex;flex-direction:column;gap:8px;}
+.detail-header{display:flex;align-items:center;justify-content:space-between;}
+.detail-id{font-family:'Orbitron',monospace;font-size:16px;font-weight:900;}
+.detail-status{font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 8px;border-radius:3px;letter-spacing:1px;border:1px solid currentColor;}
+.detail-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.meta-box{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:5px;padding:7px 9px;}
+.meta-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:1px;}
+.meta-val{font-size:13px;font-weight:600;color:var(--white);margin-top:2px;}
+.meta-val.yellow{color:var(--yellow);}
+.meta-val.red{color:var(--red);}
+.ai-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.ai-bar-name{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);width:90px;flex-shrink:0;}
+.ai-bar-track{flex:1;height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;}
+.ai-bar-fill{height:100%;border-radius:3px;width:0%;transition:width 1.5s ease;}
+.ai-bar-fill.r{background:linear-gradient(90deg,var(--red),#ff6b6b);}
+.ai-bar-fill.y{background:linear-gradient(90deg,var(--yellow),#ffaa00);}
+.ai-bar-fill.b{background:linear-gradient(90deg,var(--accent),#0066ff);}
+.ai-bar-pct{font-family:'Orbitron',monospace;font-size:9px;width:30px;text-align:right;}
+.ai-bar-pct.danger{color:var(--red);}
+.ai-bar-pct.warn{color:var(--yellow);}
+.contact-row{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:5px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);margin-bottom:4px;transition:all 0.3s;}
+.contact-row.sent{border-color:rgba(0,255,157,0.2);background:rgba(0,255,157,0.03);}
+.contact-row.police{border-color:rgba(255,214,10,0.25);background:rgba(255,214,10,0.03);}
+.contact-av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;}
+.contact-name{font-size:12px;font-weight:600;color:var(--white);flex:1;}
+.contact-badge{font-family:'Share Tech Mono',monospace;font-size:8px;padding:2px 6px;border-radius:3px;border:1px solid;letter-spacing:1px;}
+.contact-badge.sent{color:var(--green);border-color:var(--green);animation:blink 1s ease infinite;}
+.contact-badge.police{color:var(--yellow);border-color:var(--yellow);animation:blink 0.6s ease infinite;}
+.contact-badge.standby{color:var(--dim);border-color:rgba(255,255,255,0.08);}
+.log-feed{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;}
+.log-row{display:flex;gap:7px;padding:5px 8px;border-radius:4px;background:rgba(255,255,255,0.02);font-size:10px;animation:logpop 0.3s ease;}
+@keyframes logpop{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.log-row.d{border-left:2px solid var(--red);}
+.log-row.s{border-left:2px solid var(--green);}
+.log-row.w{border-left:2px solid var(--yellow);}
+.log-row.i{border-left:2px solid var(--accent);}
+.log-t{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);white-space:nowrap;padding-top:1px;}
+.feeds-strip{display:flex;gap:8px;}
+.feed-mini{flex:1;position:relative;aspect-ratio:4/3;background:#000;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);cursor:pointer;transition:border-color 0.2s;min-width:80px;max-width:140px;}
+.feed-mini:hover{border-color:rgba(0,200,255,0.3);}
+.feed-mini.active-feed{border-color:var(--accent);box-shadow:0 0 10px rgba(0,200,255,0.2);}
+.feed-mini::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px);z-index:5;pointer-events:none;}
+.feed-noise{position:absolute;inset:0;z-index:1;width:100%;height:100%;}
+.fhud{position:absolute;z-index:4;font-family:'Share Tech Mono',monospace;font-size:7px;letter-spacing:1px;}
+.fhud.tl{top:4px;left:4px;display:flex;align-items:center;gap:3px;}
+.fhud.tr{top:4px;right:4px;}
+.fhud.bl{bottom:4px;left:4px;}
+.flive{width:5px;height:5px;border-radius:50%;background:var(--dim);flex-shrink:0;}
+.fc{position:absolute;width:10px;height:10px;border-color:rgba(0,200,255,0.35);border-style:solid;z-index:3;}
+.fc.tl{top:4px;left:4px;border-width:1px 0 0 1px;}
+.fc.tr{top:4px;right:4px;border-width:1px 1px 0 0;}
+.fc.bl{bottom:4px;left:4px;border-width:0 0 1px 1px;}
+.fc.br{bottom:4px;right:4px;border-width:0 1px 1px 0;}
+.fdetbox{position:absolute;border:1px solid;z-index:3;display:none;}
+.fdetbox.show{display:block;animation:det-pulse 1s ease infinite;}
+@keyframes det-pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+.fscan{position:absolute;left:0;right:0;height:1px;z-index:2;display:none;animation:scan-sweep 3s linear infinite;}
+@keyframes scan-sweep{0%{top:0%;opacity:0.8;}100%{top:100%;opacity:0;}}
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-thumb{background:rgba(0,200,255,0.2);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<header>
+  <div class="logo">
+    <div class="logo-badge">🛡</div>
+    <div>
+      <div class="logo-name">REFLEX</div>
+      <div class="logo-sub">MULTI-INCIDENT COMMAND · AMRITA VISHWA VIDYAPEETHAM, AMARAVATI</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="stat-pill red"><div class="dot r"></div><span id="hdr-active">0 ACTIVE SOS</span></div>
+    <div class="stat-pill yellow"><div class="dot y"></div><span id="hdr-drones">0 DRONES DEPLOYED</span></div>
+    <div class="stat-pill green"><div class="dot g"></div><span id="hdr-avail">5 DRONES AVAILABLE</span></div>
+    <div class="ctrl-bar">
+      <button class="hbtn red" onclick="triggerNewSOS()">＋ TRIGGER SOS</button>
+      <button class="hbtn blue" onclick="triggerAllSOS()">⚡ MASS INCIDENT</button>
+      <button class="hbtn dim" onclick="resetAll()">↺ RESET</button>
+    </div>
+    <div class="clock" id="clock">00:00:00</div>
+  </div>
+</header>
+
+<div class="workspace">
+  <div class="map-section">
+    <div class="inc-strip" id="inc-strip">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);padding:6px 0;letter-spacing:1px;">NO ACTIVE INCIDENTS — PRESS [SPACE] OR ＋ TRIGGER SOS</div>
+    </div>
+    <div class="map-container" id="map-container">
+      <!-- Roads -->
+      <div class="road mh" style="top:32%"></div>
+      <div class="road mh" style="top:58%"></div>
+      <div class="road mv" style="left:30%"></div>
+      <div class="road mv" style="left:62%"></div>
+      <div class="road h" style="top:46%"></div>
+      <div class="road h" style="top:72%"></div>
+      <div class="road h" style="top:85%"></div>
+      <div class="road v" style="left:15%"></div>
+      <div class="road v" style="left:46%"></div>
+      <div class="road v" style="left:78%"></div>
+      <!-- Labels -->
+      <div class="mlabel" style="top:7%;left:5%">NAMBURU VILLAGE</div>
+      <div class="mlabel" style="top:18%;left:34%">AMRITA CAMPUS CORE</div>
+      <div class="mlabel" style="top:38%;left:5%">MANGALAGIRI TOWN</div>
+      <div class="mlabel" style="top:50%;left:48%">AMARAVATI CAPITAL REGION</div>
+      <div class="mlabel" style="top:65%;left:66%">UNDAVALLI</div>
+      <div class="mlabel" style="top:74%;left:28%">TADEPALLE</div>
+      <div class="mlabel" style="top:88%;left:58%">KRISHNA RIVERBANK</div>
+      <div class="mlabel" style="top:20%;left:70%">NH-16 HIGHWAY</div>
+      <div class="mlabel" style="top:56%;left:10%">VENKATESWARA NAGAR</div>
+      <!-- Police -->
+      <div class="ps" style="top:27%;left:38%"><div class="ps-dot" id="ps-campus"></div><div class="ps-name">🚔 CAMPUS SECURITY</div></div>
+      <div class="ps" style="top:44%;left:7%"><div class="ps-dot" id="ps-manga"></div><div class="ps-name">🚔 MANGALAGIRI PS</div></div>
+      <div class="ps" style="top:19%;left:73%"><div class="ps-dot" id="ps-guntur"></div><div class="ps-name">🚔 GUNTUR RURAL PS</div></div>
+      <div class="ps" style="top:76%;left:55%"><div class="ps-dot" id="ps-tadep"></div><div class="ps-name">🚔 TADEPALLE PS</div></div>
+      <!-- Campus -->
+      <div class="campus-marker" style="left:46%;top:36%">
+        <div class="campus-box">🎓</div>
+        <div class="campus-label">AMRITA VISHWA VIDYAPEETHAM</div>
+      </div>
+      <svg class="route-svg" id="route-svg" viewBox="0 0 900 600"></svg>
+      <div id="inc-markers"></div>
+      <div id="drone-markers"></div>
+      <div class="map-hud">16.5124° N · 80.5167° E · AMARAVATI, ANDHRA PRADESH</div>
+      <div class="map-legend">
+        <div class="legend-item"><div style="width:10px;height:10px;border-radius:3px;border:2px solid var(--accent);background:rgba(0,200,255,0.1);"></div>AMRITA CAMPUS</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>SOS INCIDENT</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>DRONE IN FLIGHT</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>POLICE / SECURITY</div>
+      </div>
+    </div>
+    <div class="feeds-strip" id="feeds-strip">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);padding:8px 0;letter-spacing:1px;">DRONE FEEDS APPEAR HERE AFTER DISPATCH</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel" id="detail-panel">
+      <div class="ptitle">Incident Detail</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px 0;letter-spacing:1px;">SELECT AN INCIDENT TO VIEW DETAILS</div>
+    </div>
+    <div class="panel" id="ai-panel">
+      <div class="ptitle">AI Detection</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;">AWAITING DRONE FEED...</div>
+    </div>
+    <div class="panel" id="alerts-panel">
+      <div class="ptitle">Alerts Dispatched</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;">NO ALERTS YET</div>
+    </div>
+    <div class="panel" style="flex:1;min-height:0;">
+      <div class="ptitle">System Log</div>
+      <div class="log-feed" id="global-log">
+        <div class="log-row i"><div class="log-t">--:--:--</div><div>Command center online. Amrita Amaravati units on standby.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let audioCtx;
+function ga(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function beep(f,d,t,v){try{const c=ga();const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.type=t||'square';o.frequency.value=f||880;g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(v||0.12,c.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+(d||0.12));o.start();o.stop(c.currentTime+(d||0.12)+0.05);}catch(e){}}
+function sosAlarm(){beep(440,0.12,'sawtooth',0.18);setTimeout(()=>beep(660,0.12,'sawtooth',0.18),180);setTimeout(()=>beep(880,0.25,'sawtooth',0.22),360);}
+function alertBeep(){beep(1100,0.07,'square',0.1);}
+function droneBeep(){beep(280,0.18,'sine',0.08);setTimeout(()=>beep(330,0.14,'sine',0.07),220);}
+function successBeep(){beep(760,0.09,'sine',0.09);setTimeout(()=>beep(960,0.13,'sine',0.1),140);}
+
+function tick(){document.getElementById('clock').textContent=new Date().toTimeString().split(' ')[0];}
+setInterval(tick,1000);tick();
+function ts(){return new Date().toTimeString().split(' ')[0];}
+
+const LOCS=[
+  {name:"Amrita Main Gate",          area:"MAIN GATE",           lat:16.5130,lng:80.5160,x:44,y:40},
+  {name:"Girls Hostel Block A",      area:"GIRLS HOSTEL-A",      lat:16.5118,lng:80.5148,x:38,y:50},
+  {name:"Girls Hostel Block B",      area:"GIRLS HOSTEL-B",      lat:16.5122,lng:80.5155,x:42,y:47},
+  {name:"Amrita Library Road",       area:"LIBRARY ROAD",        lat:16.5135,lng:80.5172,x:50,y:34},
+  {name:"Namburu Village Junction",  area:"NAMBURU JUNCTION",    lat:16.5155,lng:80.5120,x:14,y:10},
+  {name:"Campus Canteen Area",       area:"CANTEEN ZONE",        lat:16.5125,lng:80.5165,x:47,y:44},
+  {name:"Amaravati Capital Road",    area:"CAPITAL ROAD",        lat:16.5090,lng:80.5200,x:63,y:57},
+  {name:"Mangalagiri Highway NH-16", area:"NH-16 MANGALAGIRI",   lat:16.5060,lng:80.5100,x:15,y:46},
+  {name:"Undavalli Riverside",       area:"UNDAVALLI RIVERSIDE", lat:16.5020,lng:80.5250,x:72,y:68},
+  {name:"Tadepalle Bus Stop",        area:"TADEPALLE BUS STOP",  lat:16.4980,lng:80.5180,x:52,y:78},
+];
+const NAMES=['Priya Sharma','Kavya Reddy','Ananya Singh','Meera Iyer','Divya Nair','Sneha Patel','Riya Desai','Pooja Rao','Aisha Khan','Lakshmi Venugopal'];
+const THREATS=['Stalker following student on campus road','Suspicious individual near hostel block','Unsafe situation at campus exit','Distress call from library area','Assault attempt near highway junction','Unsafe transport — auto refusing to stop'];
+const COLORS=['#ff2d55','#ff6b00','#ffd60a','#bf5af2','#00c8ff','#ff375f','#34c759'];
+const CONTACTS=[{name:'Mom',av:'M',col:'#1a2a6c'},{name:'Dad',av:'D',col:'#1a5c2a'},{name:'Hostel Warden',av:'W',col:'#5c1a4a'},{name:'Campus Security',av:'S',col:'#1a4a5c'},{name:'Friend Nearby',av:'F',col:'#5c4a00'}];
+const PS_IDS=['ps-campus','ps-manga','ps-guntur','ps-tadep'];
+const DRONES=[{id:'D1',x:46,y:34},{id:'D2',x:10,y:10},{id:'D3',x:80,y:14},{id:'D4',x:18,y:82},{id:'D5',x:70,y:65}];
+
+let incidents=[],selectedId=null,iCount=0,usedDrones=[];
+
+function glog(msg,cls){const el=document.getElementById('global-log');const d=document.createElement('div');d.className='log-row '+(cls||'i');d.innerHTML='<div class="log-t">'+ts()+'</div><div>'+msg+'</div>';el.insertBefore(d,el.firstChild);}
+
+function updateStats(){const a=incidents.filter(i=>i.status==='ACTIVE'||i.status==='RESPONDING').length;const dr=incidents.filter(i=>i.droneAssigned).length;document.getElementById('hdr-active').textContent=a+' ACTIVE SOS';document.getElementById('hdr-drones').textContent=dr+' DRONES DEPLOYED';document.getElementById('hdr-avail').textContent=Math.max(0,5-dr)+' DRONES AVAILABLE';}
+
+function triggerNewSOS(li){
+  ga();sosAlarm();
+  const locIdx=li!=null?li:Math.floor(Math.random()*LOCS.length);
+  const loc=LOCS[locIdx];
+  const id='INC-'+String(++iCount).padStart(3,'0');
+  const color=COLORS[(iCount-1)%COLORS.length];
+  const victim=NAMES[Math.floor(Math.random()*NAMES.length)];
+  const threat=THREATS[Math.floor(Math.random()*THREATS.length)];
+  const contacts=[...CONTACTS].sort(()=>Math.random()-0.5).slice(0,3);
+  const availD=DRONES.filter(d=>!usedDrones.includes(d.id));
+  const drone=availD.length?availD[Math.floor(Math.random()*availD.length)]:null;
+  if(drone)usedDrones.push(drone.id);
+  const inc={id,color,victim,threat,loc,contacts,status:'ACTIVE',droneAssigned:false,droneId:drone?drone.id:null,startTime:Date.now(),ai:{s:0,a:0,v:0,c:0},alertsSent:[],policeSent:false,feedActive:false,detActive:false};
+  incidents.push(inc);
+  glog('🚨 SOS #'+id+' — '+victim+' @ '+loc.area+' ['+threat+']','d');
+  placeIncMarker(inc);placeMiniFeed(inc);renderStrip();
+  if(!selectedId||incidents.length===1)selectInc(id);
+  updateStats();runSeq(inc,drone);
+}
+
+function runSeq(inc,drone){
+  const id=inc.id;
+  setTimeout(()=>{inc.contacts.forEach((c,i)=>{setTimeout(()=>{inc.alertsSent.push(c.name);alertBeep();glog('📱 Alert → '+c.name+' ('+id+')','s');if(selectedId===id)renderSidebar(inc);},i*700);});},1000);
+  setTimeout(()=>{
+    if(!drone){glog('⚠️ No drones available for '+id,'w');return;}
+    inc.droneAssigned=true;inc.status='RESPONDING';droneBeep();
+    glog('🚁 '+drone.id+' dispatched → '+inc.loc.area,'w');updateStats();renderStrip();
+    placeDrone(inc,drone);
+    setTimeout(()=>{const el=document.getElementById('drone-'+id);if(el){el.style.left=(inc.loc.x+2)+'%';el.style.top=(inc.loc.y-4)+'%';}drawRoute(inc,drone);},500);
+    setTimeout(()=>{inc.feedActive=true;glog('📹 '+drone.id+' on site — live feed active ('+id+')','s');successBeep();activateFeed(id);if(selectedId===id)renderSidebar(inc);animateAI(inc,id);},8000);
+  },2000);
+}
+
+function animateAI(inc,id){
+  setTimeout(()=>{inc.ai.s=Math.floor(Math.random()*30+10);inc.ai.a=Math.floor(Math.random()*30+15);if(selectedId===id)renderAI(inc);glog('🔍 AI scanning... ('+id+')','i');},1000);
+  setTimeout(()=>{inc.ai.s=Math.floor(Math.random()*40+50);inc.ai.a=Math.floor(Math.random()*35+55);if(selectedId===id)renderAI(inc);glog('⚠️ Distress signals detected ('+id+')','w');beep(550,0.18,'sawtooth',0.13);},3000);
+  setTimeout(()=>{
+    inc.ai.s=Math.floor(Math.random()*15+80);inc.ai.a=Math.floor(Math.random()*12+82);inc.ai.v=Math.floor(Math.random()*20+70);inc.ai.c=Math.floor(Math.random()*10+88);
+    inc.detActive=true;showDetBox(id);if(selectedId===id)renderAI(inc);
+    glog('🚨 THREAT CONFIRMED '+inc.ai.c+'% confidence ('+id+')','d');sosAlarm();
+    setTimeout(()=>{inc.policeSent=true;alertBeep();glog('🚔 Campus Security + Police alerted ('+id+')','d');const el=document.getElementById(PS_IDS[Math.floor(Math.random()*PS_IDS.length)]);if(el)el.classList.add('alert');if(selectedId===id)renderSidebar(inc);updateStats();},1500);
+  },6000);
+}
+
+function placeIncMarker(inc){
+  const c=document.getElementById('inc-markers');const el=document.createElement('div');
+  el.className='inc-marker show';el.id='inc-m-'+inc.id;
+  el.style.left=inc.loc.x+'%';el.style.top=inc.loc.y+'%';el.style.color=inc.color;
+  el.innerHTML='<div class="inc-ring"></div><div class="inc-ring"></div><div class="inc-ring"></div><div class="inc-pin" style="background:'+inc.color+';box-shadow:0 0 15px '+inc.color+'"></div><div class="inc-label" style="border-color:'+inc.color+';color:'+inc.color+'">'+inc.loc.area+'</div><div class="inc-id">'+inc.id+'</div>';
+  el.onclick=()=>selectInc(inc.id);c.appendChild(el);
+}
+
+function placeDrone(inc,drone){
+  const c=document.getElementById('drone-markers');const el=document.createElement('div');
+  el.className='drone-dot show';el.id='drone-'+inc.id;el.style.left=drone.x+'%';el.style.top=drone.y+'%';el.textContent='🚁';c.appendChild(el);
+}
+
+function drawRoute(inc,drone){
+  const svg=document.getElementById('route-svg');
+  const x1=(drone.x/100)*900,y1=(drone.y/100)*600,x2=(inc.loc.x/100)*900,y2=(inc.loc.y/100)*600;
+  const cx=(x1+x2)/2+(Math.random()-0.5)*80,cy=(y1+y2)/2+(Math.random()-0.5)*60;
+  const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d','M '+x1+' '+y1+' Q '+cx+' '+cy+' '+x2+' '+y2);
+  p.setAttribute('fill','none');p.setAttribute('stroke',inc.color);p.setAttribute('stroke-width','1.5');p.setAttribute('stroke-dasharray','6 4');p.setAttribute('opacity','0.5');
+  p.style.strokeDashoffset='400';p.style.transition='stroke-dashoffset 3s ease';
+  svg.appendChild(p);setTimeout(()=>p.style.strokeDashoffset='0',100);
+}
+
+function renderStrip(){
+  const s=document.getElementById('inc-strip');
+  if(!incidents.length){s.innerHTML='<div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);padding:6px 0;letter-spacing:1px;">NO ACTIVE INCIDENTS</div>';return;}
+  s.innerHTML=incidents.map(i=>'<div class="inc-chip '+(selectedId===i.id?'active-chip':'')+'" style="color:'+i.color+';border-color:'+(selectedId===i.id?i.color:'rgba(255,255,255,0.08)')+'" onclick="selectInc(\''+i.id+'\')"><div class="dot" style="background:'+i.color+';box-shadow:0 0 6px '+i.color+';animation-duration:'+(i.status==='ACTIVE'?'0.4s':'1.2s')+'"></div><div><div class="chip-cid" style="color:'+i.color+'">'+i.id+'</div><div style="font-size:8px;color:var(--dim)">'+i.loc.area+'</div></div><div style="font-size:8px;color:var(--dim)">'+i.status+'</div></div>').join('');
+}
+
+function selectInc(id){selectedId=id;const inc=incidents.find(i=>i.id===id);if(!inc)return;renderStrip();renderSidebar(inc);}
+function renderSidebar(inc){renderDetail(inc);renderAI(inc);renderAlerts(inc);}
+
+function renderDetail(inc){
+  const e=Math.floor((Date.now()-inc.startTime)/1000);
+  const mm=String(Math.floor(e/60)).padStart(2,'0'),ss=String(e%60).padStart(2,'0');
+  document.getElementById('detail-panel').innerHTML='<div class="ptitle">Incident Detail</div><div class="detail-card"><div class="detail-header"><div class="detail-id" style="color:'+inc.color+'">'+inc.id+'</div><div class="detail-status" style="color:'+(inc.status==='RESPONDING'?'var(--yellow)':inc.color)+';border-color:'+(inc.status==='RESPONDING'?'var(--yellow)':inc.color)+'">'+inc.status+'</div></div><div><div style="font-size:15px;font-weight:600;color:var(--white)">👤 '+inc.victim+'</div><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:1px;margin-top:2px">📍 '+inc.loc.name+', Amaravati</div></div><div class="detail-meta"><div class="meta-box"><div class="meta-label">THREAT TYPE</div><div class="meta-val" style="font-size:10px;color:var(--red)">'+inc.threat+'</div></div><div class="meta-box"><div class="meta-label">ELAPSED</div><div class="meta-val">'+mm+':'+ss+'</div></div><div class="meta-box"><div class="meta-label">DRONE</div><div class="meta-val '+(inc.droneAssigned?'yellow':'red')+'">'+( inc.droneId||'NONE')+'</div></div><div class="meta-box"><div class="meta-label">COORDINATES</div><div class="meta-val" style="font-size:10px">'+inc.loc.lat.toFixed(4)+'°N</div></div></div></div>';
+}
+
+function renderAI(inc){
+  function bar(lbl,val,cls){const pc=val>=80?'danger':val>=50?'warn':'';return '<div class="ai-bar-row"><div class="ai-bar-name">'+lbl+'</div><div class="ai-bar-track"><div class="ai-bar-fill '+cls+'" style="width:'+val+'%"></div></div><div class="ai-bar-pct '+pc+'">'+val+'%</div></div>';}
+  document.getElementById('ai-panel').innerHTML='<div class="ptitle">AI Detection — '+inc.id+'</div>'+(inc.feedActive?bar('SCREAM',inc.ai.s,'r')+bar('DISTRESS AUDIO',inc.ai.a,'y')+bar('VISUAL THREAT',inc.ai.v,'b')+bar('CONFIDENCE',inc.ai.c,'r'):'<div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:1px;">AWAITING DRONE ARRIVAL...</div>');
+}
+
+function renderAlerts(inc){
+  const rows=inc.contacts.map(c=>{const sent=inc.alertsSent.includes(c.name);return '<div class="contact-row '+(sent?'sent':'')+'"><div class="contact-av" style="background:'+c.col+'">'+c.av+'</div><div class="contact-name">'+c.name+'</div><div class="contact-badge '+(sent?'sent':'standby')+'">'+(sent?'ALERTED':'STANDBY')+'</div></div>';}).join('');
+  const pol='<div class="contact-row '+(inc.policeSent?'police':'')+'"><div class="contact-av" style="background:#5c1a00">P</div><div class="contact-name">Campus Security + Police</div><div class="contact-badge '+(inc.policeSent?'police':'standby')+'">'+(inc.policeSent?'NOTIFIED':'STANDBY')+'</div></div>';
+  document.getElementById('alerts-panel').innerHTML='<div class="ptitle">Alerts — '+inc.id+'</div>'+rows+pol;
+}
+
+function placeMiniFeed(inc){
+  const s=document.getElementById('feeds-strip');
+  const ph=s.querySelector('div:not(.feed-mini)');if(ph)ph.remove();
+  const el=document.createElement('div');el.className='feed-mini';el.id='fm-'+inc.id;el.onclick=()=>selectInc(inc.id);
+  el.innerHTML='<canvas id="cv-'+inc.id+'" class="feed-noise" width="160" height="120"></canvas><div class="fc tl"></div><div class="fc tr"></div><div class="fc bl"></div><div class="fc br"></div><div class="fhud tl"><div class="flive" id="fdot-'+inc.id+'"></div><span id="fst-'+inc.id+'" style="color:var(--dim)">OFFLINE</span></div><div class="fhud tr" style="color:'+inc.color+'">'+inc.id+'</div><div class="fhud bl" style="color:rgba(0,200,255,0.5)">'+inc.loc.area+'</div><div class="fdetbox" id="fdet-'+inc.id+'" style="top:20%;left:25%;width:40%;height:55%;border-color:'+inc.color+'"><div style="position:absolute;top:-14px;left:0;font-family:Share Tech Mono,monospace;font-size:7px;color:'+inc.color+';background:rgba(0,0,0,0.85);padding:1px 4px">⚠ THREAT</div></div><div class="fscan" id="fscan-'+inc.id+'" style="background:linear-gradient(90deg,transparent,'+inc.color+'44,transparent)"></div>';
+  s.appendChild(el);
+  startCanvas(inc.id,false);
+}
+
+function startCanvas(id,active){
+  const cv=document.getElementById('cv-'+id);if(!cv)return;
+  const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;
+  if(cv._af)cancelAnimationFrame(cv._af);
+  function draw(){
+    if(active){
+      ctx.fillStyle='rgba(2,12,26,0.85)';ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='rgba(0,200,255,0.06)';ctx.lineWidth=0.5;
+      for(let x=0;x<W;x+=15){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let y=0;y<H;y+=15){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+      const img=ctx.createImageData(W,H);
+      for(let i=0;i<img.data.length;i+=4){const v=Math.random()>0.97?Math.random()*50:0;img.data[i]=v;img.data[i+1]=v+Math.random()*20;img.data[i+2]=v+Math.random()*40;img.data[i+3]=v>0?200:0;}
+      ctx.putImageData(img,0,0);
+    }else{
+      const img=ctx.createImageData(W,H);
+      for(let i=0;i<img.data.length;i+=4){const v=Math.random()*15;img.data[i]=v;img.data[i+1]=v;img.data[i+2]=v;img.data[i+3]=180;}
+      ctx.putImageData(img,0,0);
+    }
+    cv._af=requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function activateFeed(id){
+  const dot=document.getElementById('fdot-'+id);const st=document.getElementById('fst-'+id);const sc=document.getElementById('fscan-'+id);const fm=document.getElementById('fm-'+id);
+  if(dot){dot.style.background='var(--red)';dot.style.boxShadow='0 0 6px var(--red)';dot.style.animation='blink 0.8s ease infinite';}
+  if(st){st.style.color='var(--red)';st.textContent='● LIVE';}
+  if(sc)sc.style.display='block';
+  if(fm)fm.classList.add('active-feed');
+  startCanvas(id,true);
+}
+function showDetBox(id){const b=document.getElementById('fdet-'+id);if(b)b.classList.add('show');}
+
+function triggerAllSOS(){
+  ga();
+  const used=incidents.map(i=>LOCS.indexOf(i.loc));
+  let added=0;
+  for(let i=0;i<LOCS.length&&added<4;i++){if(!used.includes(i)){setTimeout(()=>triggerNewSOS(i),added*600);added++;}}
+}
+
+function resetAll(){
+  incidents=[];selectedId=null;iCount=0;usedDrones=[];
+  document.getElementById('inc-markers').innerHTML='';
+  document.getElementById('drone-markers').innerHTML='';
+  document.getElementById('route-svg').innerHTML='';
+  document.getElementById('feeds-strip').innerHTML='<div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);padding:8px 0;letter-spacing:1px;">DRONE FEEDS APPEAR HERE AFTER DISPATCH</div>';
+  renderStrip();
+  document.getElementById('detail-panel').innerHTML='<div class="ptitle">Incident Detail</div><div style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px 0;letter-spacing:1px;">SELECT AN INCIDENT TO VIEW DETAILS</div>';
+  document.getElementById('ai-panel').innerHTML='<div class="ptitle">AI Detection</div><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:1px;">AWAITING DRONE FEED...</div>';
+  document.getElementById('alerts-panel').innerHTML='<div class="ptitle">Alerts Dispatched</div><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:1px;">NO ALERTS YET</div>';
+  document.getElementById('global-log').innerHTML='<div class="log-row i"><div class="log-t">--:--:--</div><div>System reset. Amrita Amaravati units standby.</div></div>';
+  PS_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('alert');});
+  updateStats();beep(400,0.3,'sine',0.1);
+}
+
+setInterval(()=>{if(selectedId){const inc=incidents.find(i=>i.id===selectedId);if(inc)renderDetail(inc);}},1000);
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();triggerNewSOS();}if(e.code==='KeyM'){e.preventDefault();triggerAllSOS();}if(e.code==='KeyR'){e.preventDefault();resetAll();}});
+updateStats();
+</script>
+</body>
+</html>
